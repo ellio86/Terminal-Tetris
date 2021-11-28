@@ -23,7 +23,7 @@ class Game_board:
 class Piece:
     def __init__(self, position: list = [0, 5], blocks: list = None):
         self.position = position
-        self.blocks = blocks if blocks else [(0, 0, 0), (0, 1, 1), (1, 0, 1), (1, 1, 1), (2, 1, 1)]
+        self.blocks = blocks if blocks else [(0, 0, 0), (0, 1, 1), (1, 0, 1), (1, 1, 1), (2, 1, 1), (0, 2, 0)]
         self.height = max([block[0] for block in self.blocks]) + 1
     
 def draw_to_board(board: Game_board, *pieces: list[Piece]) -> None:
@@ -60,14 +60,17 @@ def play_game():
                             stdscr.addstr(x, y, chr(9632))
                         
             stdscr.refresh()
+            stdscr.timeout(100)
             
-            #code = stdscr.getch()
-            #stdscr.refresh()
-            #stdscr.timeout(100)
-            #match chr(code).lower():
-                #case ch:
-                  #  board.board[0][0] = ch
-                  #  continue
+            code = stdscr.getch()
+            if code != -1:
+                match chr(code).lower():
+                    case "a":
+                        active_piece.position[1] -= 1
+                    case "d":
+                        active_piece.position[1] += 1
+                        
+                stdscr.refresh()
                     
 
     return curses.wrapper(_play_game)
