@@ -53,7 +53,12 @@ def play_game():
             # Display the board
             for x, line in enumerate(board.board):
                 for y, pixel in enumerate(line):
-                    stdscr.addstr(x, y, str(pixel))
+                    match pixel:
+                        case 1 | 2:
+                            stdscr.addstr(x, y, chr(9633))
+                        case 0:
+                            stdscr.addstr(x, y, chr(9632))
+                        
             stdscr.refresh()
             
             #code = stdscr.getch()
