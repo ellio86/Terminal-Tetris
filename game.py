@@ -32,9 +32,9 @@ class Game_board:
         self.board = clear_board
     
 class Piece:
-    def __init__(self, position: list = [0, 5], blocks: list = None, speed=1):
+    def __init__(self, blocks: tuple, position: list = [0, 5], speed=1):
+        self.blocks = blocks
         self.position = position
-        self.blocks = blocks if blocks else [(0, 1, 1), (1, 0, 1), (1, 1, 1), (2, 1, 1)]
         self.height = max([block[0] for block in self.blocks]) + 1
         self.speed = speed
     
@@ -51,14 +51,16 @@ def play_game():
         stdscr.clear()
         board = Game_board(11, 21)
         playing = True
-        piece_speed = 1
         moved = False
-        pieces = [((0, 1, 1), (1, 0, 1), (1, 1, 1), (2, 1, 1)),
+        pieces = [
+                  ((0, 1, 1), (1, 0, 1), (1, 1, 1), (2, 1, 1)),
                   ((0, 0, 1), (0, 1, 1), (1, 0, 1), (1, 1, 1)),
                   ((0, 0, 1), (0, 1, 1), (1, 1, 1), (1, 2, 1))
                  ]
         active_piece = Piece(blocks=random.choice(pieces))
+        
         while playing:
+            # Create new piece if current piece is at the bottom of the board
             if active_piece.position[0] + 1 == board.height - active_piece.height:
                 active_piece = Piece(blocks=random.choice(pieces))
             
