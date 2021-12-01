@@ -38,7 +38,7 @@ class Piece:
         self.height = max([block[0] for block in self.blocks]) + 1
         self.speed = speed
     
-def draw_to_board(board: Game_board, *pieces: list[Piece]) -> None:
+def draw_to_board(board: Game_board, *pieces: Piece) -> None:
     """Takes in a list of pieces and displays them on the board."""
     for piece in pieces:
         for block in piece.blocks:
@@ -83,10 +83,10 @@ def play_game():
                             stdscr.addstr(x, y, chr(9633))
                         case 0:
                             stdscr.addstr(x, y, chr(9632))
-            
+            stdscr.addstr(0, 22, str(time.time())[11])
             board.clear()
             stdscr.refresh()
-            stdscr.timeout(100)
+            stdscr.timeout(10)
             
             code = stdscr.getch()
             if code != -1:
