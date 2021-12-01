@@ -19,7 +19,7 @@ class Game_board:
         self.board[x][y] = z
         
     def check_block(self, x, y) -> int:
-        return self.board(x, y)
+        return self.board[x][y]
     
     def clear(self) -> None:
         """Removes any active blocks from the board."""
@@ -33,18 +33,40 @@ class Game_board:
         self.board = clear_board
     
 class Piece:
-    def __init__(self, blocks: tuple, position: list = [0, 5], speed: int=1) -> None:
+    def __init__(self, blocks: list[tuple], position: list = [0, 5], speed: int=1) -> None:
         self.blocks = blocks
-        self.blocks_pos = [0,0,0,0]
         self.position = position
         self.height = max([block[0] for block in self.blocks]) + 1
         self.speed = speed
-        self.update_block_pos()
+        self.blocks_pos = self.get_block_pos()
 
-    def update_block_pos(self) -> None:
+    def get_block_pos(self, blocks: list[tuple]=None) -> None:
+        """Returns a list of tuples containing the blocks exact co-ordinates."""
+        blocks = blocks if blocks else self.blocks
+        blocks_pos = [0 for _ in blocks]
         for x, block in enumerate(self.blocks):
             positions = [block[0] + self.position[0], block[1] + self.position[1]]
-            self.blocks_pos[x] = positions
+            blocks_pos[x] = positions
+        return blocks_pos
+
+    def calc_rotate(self, dir: str=None) -> list[tuple]:
+        """Rotate the piece by 90 degrees"""
+        new_blocks = []
+        for block in self.blocks:
+            new_block = (-block[1], block[0], 1) if dir == "L" else (block[1], -block[0], 1)
+            new_blocks.append(new_block)
+        return new_blocks
+
+def rotate(board: Game_board, piece: Piece, dir:str=None) -> None:
+    """Roates piece on board if there is space."""
+    can_rotate = True
+    rotated = piece.calc_rotate(dir)
+    for block in rotated:
+        print(board.check_block(block[0], block[1]))
+        if board.check_block(block[0], block[1]) >= 2:
+            can_rotate = True # <------- Should be FALSE but for some reason it stops roations from working 
+    if can_rotate:
+        piece.blocks = rotated
     
 def draw_to_board(board: Game_board, *pieces: Piece) -> None:
     """Takes in a list of pieces and displays them on the board."""
@@ -57,10 +79,13 @@ def draw_to_board(board: Game_board, *pieces: Piece) -> None:
 def can_move(board: Game_board, piece: Piece) -> dict:
     """Checks whether a piece can move left, right or down."""
     d = {"left": True, "right": True, "down": True}
-    for x, block in enumerate(piece.blocks_pos):
-        d["left"] = False if block[1] - 1 == -1 or not d["left"] else True
-        d["right"] = False if block[1] + 1 == board.width or not d["right"] else True
-        d["down"] = False if board.board[block[0] + 1][block[1]] == 2 or not d["down"] else True
+    for block in piece.blocks_pos:
+        try:
+            d["left"] = False if block[1] - 1 == -1 or not d["left"] else True
+            d["right"] = False if block[1] + 1 == board.width or not d["right"] else True
+            d["down"] = False if board.board[block[0] + 1][block[1]] == 2 or not d["down"] else True
+        except IndexError:
+            return {"left": False, "right": False, "down": False}
     return d
 
                
@@ -70,16 +95,20 @@ def play_game():
         board = Game_board()
         playing = True
         moved = False
+        # Each piece is represented by 4 blocks, with positions
+        # relative to the center of a 9x9 square  (apart from
+        # the long bar and square)
         pieces = [
-                  ((0, 1, 1), (1, 0, 1), (1, 1, 1), (2, 1, 1)),
-                  ((0, 0, 1), (0, 1, 1), (1, 0, 1), (1, 1, 1)),
-                  ((0, 0, 1), (0, 1, 1), (1, 1, 1), (1, 2, 1))
+                  [(-1, 0, 1), (0, -1, 1), (0, 0, 1), (0, 1, 1)],
+                  [(0, 0, 1), (0, 1, 1), (1, 0, 1), (-1, 1, 1)],
+                  [(0, -1, 1), (0, 0, 1), (0, 1, 1), (-1, 1, 1)]
                  ]
         active_piece = Piece(blocks=random.choice(pieces))
         
         while playing:
-            # 
             moves = can_move(board, active_piece)
+
+            # If the block lands, create a new one
             if not moves["down"]:
                 for block in active_piece.blocks_pos:
                     board.add_block(block[0], block[1], 2)
@@ -95,20 +124,25 @@ def play_game():
                 moved = False
                 
             # Re-Draw the piece to the board
-            active_piece.update_block_pos()
+            active_piece.blocks_pos = active_piece.get_block_pos()
             draw_to_board(board, active_piece)
 
             # Display the board from the board matrix
             for x, line in enumerate(board.board[:-1]):
                 for y, pixel in enumerate(line):
                     match pixel:
-                        case 1 | 2:
+                        case 1:
                             stdscr.addstr(x, y, chr(9633))
+                            #stdscr.addstr(x, y, str(1))
+                        case 2:
+                            stdscr.addstr(x, y, chr(9633))
+                            #stdscr.addstr(x, y, str(2))
                         case 0:
                             stdscr.addstr(x, y, chr(9632))
+                            #stdscr.addstr(x, y, str(0))
 
             # DEBUG AREA
-            stdscr.addstr(22, 0, f"Timer: {str(time.time())[11]}") # Show timer
+            stdscr.addstr(22, 0, f"Timer: {str(time.time())}") # Show timer
             stdscr.addstr(23, 0, f"{active_piece.blocks_pos[3]}") # Show individual block position
             stdscr.addstr(24, 0, f"{moves['down']}") 
 
@@ -131,9 +165,9 @@ def play_game():
                         if moves["down"]:
                             active_piece.position[0] += 1
                     case "e":
-                        pass
+                        rotate(board, active_piece, "L")
                     case "q":
-                        pass
+                        rotate(board, active_piece, "R")
                 
                 stdscr.refresh()
                     
