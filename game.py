@@ -21,6 +21,23 @@ class Game_board:
     def check_block(self, x, y) -> int:
         return self.board[x][y]
     
+    def check_line(self, line_index):
+        for pixel in self.board[line_index]:
+            if pixel != 2:
+                return False
+        return True
+    
+    def check_lines(self):
+        line_count = 0
+        for x, line in enumerate(self.board):
+            if self.check_line(x):
+                self.board.pop(x)
+                self.board.insert(0, [0 for _ in range(self.width)])
+                line_count += 1
+                
+        return line_count
+                    
+    
     def clear(self) -> None:
         """Removes any active blocks from the board."""
         clear_board = []
@@ -92,16 +109,19 @@ def can_move(board: Game_board, piece: Piece) -> dict:
 def play_game():
     def _play_game(stdscr):
         stdscr.clear()
+        score = 0
         board = Game_board()
         playing = True
         moved = False
         # Each piece is represented by 4 blocks, with positions
         # relative to the center of a 9x9 square  (apart from
-        # the long bar and square)
+        # the long bar and square) (x, y, color)
         pieces = [
-                  [(-1, 0, 1), (0, -1, 1), (0, 0, 1), (0, 1, 1)],
-                  [(0, 0, 1), (0, 1, 1), (1, 0, 1), (-1, 1, 1)],
-                  [(0, -1, 1), (0, 0, 1), (0, 1, 1), (-1, 1, 1)]
+                  [(-1, 0, 1), (0, -1, 1), (0, 0, 1), (0, 1, 1)], # T Block
+                  [(0, 0, 1), (0, 1, 1), (1, 0, 1), (-1, 1, 1)], # Z Block
+                  [(0, -1, 1), (0, 0, 1), (0, 1, 1), (1, 1, 1)], # L block
+                  [(0, 1, 1), (0, 0, 1), (0, -1, 1), (-1, -1, 1)], # r block
+                  [(1, 0, 1), (0, 0 , 1), (0, -1, 1), (-1, -1, 1)], # S block
                  ]
         active_piece = Piece(blocks=random.choice(pieces))
         
@@ -131,25 +151,31 @@ def play_game():
             for x, line in enumerate(board.board[:-1]):
                 for y, pixel in enumerate(line):
                     match pixel:
+                        # Falling block
                         case 1:
                             stdscr.addstr(x, y, chr(9633))
-                            #stdscr.addstr(x, y, str(1))
+                            
+                        # Still block
                         case 2:
                             stdscr.addstr(x, y, chr(9633))
-                            #stdscr.addstr(x, y, str(2))
+ 
+                        # Empty Space
                         case 0:
                             stdscr.addstr(x, y, chr(9632))
-                            #stdscr.addstr(x, y, str(0))
+
 
             # DEBUG AREA
             stdscr.addstr(22, 0, f"Timer: {str(time.time())}") # Show timer
             stdscr.addstr(23, 0, f"{active_piece.blocks_pos[3]}") # Show individual block position
-            stdscr.addstr(24, 0, f"{moves['down']}") 
+            stdscr.addstr(24, 0, f"{moves['down']}")
+            stdscr.addstr(25, 0, f"Score: {score}") # Show score
 
 
             board.clear()
             stdscr.refresh()
             stdscr.timeout(1)
+            
+            score += board.check_lines() * 1000
             
             # Handle user input
             code = stdscr.getch()
