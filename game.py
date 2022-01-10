@@ -1,6 +1,8 @@
 import time, random
 import curses
 from dataclasses import dataclass
+import colorama
+from colorama import Fore
 
 
 class Game_board:
@@ -154,13 +156,14 @@ def can_move(board: Game_board, piece: Piece) -> dict:
 
 def play_game():
     def _play_game(stdscr):
+        LEVEL = 0
         DEBUGGING = True
         stdscr.clear()
         score = 0
         board = Game_board()
         playing = True
         moved = False
-        view_size = "small"
+        view_size = "medium"
         prev_time = "0"
 
         # Each piece is represented by 4 blocks, with positions
@@ -225,7 +228,7 @@ def play_game():
 
                             # Still block
                             case 2:
-                                stdscr.addstr(x, y, chr(9633))
+                                stdscr.addstr(x, y, f"{chr(9633)}")
 
                             # Permanent block
                             case 3:
@@ -257,6 +260,15 @@ def play_game():
             board.clear()
             stdscr.refresh()
             stdscr.timeout(1)
+            match board.check_lines():
+                case 1:
+                    score += 40 * (LEVEL + 1)
+                case 2:
+                    score += 100 * (LEVEL + 1)
+                case 3:
+                    score += 300 * (LEVEL + 1)
+                case 4:
+                    score += 1200 * (LEVEL + 1)
 
             score += board.check_lines() * 1000
 
@@ -287,4 +299,6 @@ def play_game():
     return curses.wrapper(_play_game)
 
 
-print(play_game())
+if __name__ == "__main__":
+    colorama.init()
+    print(play_game())
