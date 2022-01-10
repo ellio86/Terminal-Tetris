@@ -23,7 +23,8 @@ class Game_board:
         return string
 
     def add_block(self, x, y, z) -> None:
-        self.board[x][y] = z
+        if not self.board[x][y] == 3:
+            self.board[x][y] = z
 
     def check_block(self, x, y) -> int:
         return self.board[x][y]
@@ -38,10 +39,12 @@ class Game_board:
 
     def check_lines(self):
         line_count = 0
-        for x, line in enumerate(self.board):
+        for x, line in enumerate(self.board[:-1]):
             if self.check_line(x):
                 self.board.pop(x)
                 self.board.insert(0, [0 for _ in range(self.width)])
+                self.board[0].insert(0, 3)
+                self.board[0].append(3)
                 line_count += 1
 
         return line_count
@@ -120,7 +123,7 @@ def can_move(board: Game_board, piece: Piece) -> dict:
         try:
             d["left"] = (
                 False
-                if board.board[block[0]][block[1] - 1] in (2, 3) or not d["left"]
+                if board.board[block[0]][block[1] - 1] != 0 or not d["left"]
                 else True
             )
         except IndexError:
@@ -130,7 +133,7 @@ def can_move(board: Game_board, piece: Piece) -> dict:
         try:
             d["right"] = (
                 False
-                if board.board[block[0]][block[1] + 1] in (2, 3) or not d["right"]
+                if board.board[block[0]][block[1] + 1] != 0 or not d["right"]
                 else True
             )
         except IndexError:
@@ -140,7 +143,7 @@ def can_move(board: Game_board, piece: Piece) -> dict:
         try:
             d["down"] = (
                 False
-                if board.board[block[0] + 1][block[1]] in (2, 3) or not d["down"]
+                if board.board[block[0] + 1][block[1]] != 0 or not d["down"]
                 else True
             )
         except IndexError:
@@ -263,15 +266,15 @@ def play_game():
                 if not str(time.time())[12] == prev_time:
                     match chr(code).lower():
                         case "a":
-                            if moves["left"]:
+                            if moves["left"] and active_piece.position[1] - 1 != 0:
                                 active_piece.position[1] -= 1
                                 prev_time = str(time.time())[12]
                         case "d":
-                            if moves["right"]:
+                            if moves["right"] and active_piece.position[1] + 1 != 11:
                                 active_piece.position[1] += 1
                                 prev_time = str(time.time())[12]
                         case "s":
-                            if moves["down"]:
+                            if moves["down"] and active_piece.position[0] + 1 != 20:
                                 active_piece.position[0] += 1
                                 prev_time = str(time.time())[12]
                         case "e":
