@@ -7,7 +7,13 @@ class Game_board:
     def __init__(self, width: int = 10, height: int = 20) -> None:
         self.width = width
         self.height = height
-        self.board = [[0 for _ in range(self.width)] for _ in range(self.height)]
+        self.b = [[0 for _ in range(self.width)] for _ in range(self.height)]
+        self.board = []
+        for line in self.b:
+            line.insert(0, 3)
+            line.append(3)
+            self.board.append(line)
+
         self.board.append([3 for _ in range(self.width)])
 
     def get(self) -> str:
@@ -86,8 +92,13 @@ def rotate(board: Game_board, piece: Piece, dir: str = None) -> None:
     rotated = piece.calc_rotate(dir)
     for block in rotated:
         print(board.check_block(block[0], block[1]))
-        if board.check_block(block[0], block[1]) >= 2:
-            can_rotate = True  # <------- Should be FALSE but for some reason it stops roations from working
+        if (
+            board.check_block(
+                piece.position[0] + block[0], piece.position[1] + block[1]
+            )
+            >= 2
+        ):
+            can_rotate = False
     if can_rotate:
         piece.blocks = rotated
 
@@ -106,17 +117,32 @@ def can_move(board: Game_board, piece: Piece) -> dict:
     d = {"left": True, "right": True, "down": True}
     for block in piece.blocks_pos:
         try:
-            d["left"] = False if block[1] - 1 == -1 or not d["left"] else True
-            d["right"] = (
-                False if block[1] + 1 == board.width or not d["right"] else True
+            d["left"] = (
+                False
+                if board.board[block[0]][block[1] - 1] in (2, 3) or not d["left"]
+                else True
             )
+        except IndexError:
+            d["left"] = False
+
+        try:
+            d["right"] = (
+                False
+                if board.board[block[0]][block[1] + 1] in (2, 3) or not d["right"]
+                else True
+            )
+        except IndexError:
+            d["right"] = False
+
+        try:
             d["down"] = (
                 False
                 if board.board[block[0] + 1][block[1]] in (2, 3) or not d["down"]
                 else True
             )
         except IndexError:
-            return {"left": False, "right": False, "down": False}
+            d["down"] = False
+
     return d
 
 
@@ -194,22 +220,28 @@ def play_game():
                             case 2:
                                 stdscr.addstr(x, y, chr(9633))
 
+                            # Permanent block
+                            case 3:
+                                stdscr.addstr(x, y, "3")
+
                             # Empty Space
                             case 0:
                                 stdscr.addstr(x, y, chr(9632))
                     except curses.error:
                         pass
 
+            # Show score
+            stdscr.addstr(debug_py, debug_px, f"Score: {score}")
             # DEBUG AREA
             if DEBUGGING:
+                # Show timer
+                stdscr.addstr(debug_py + 1, debug_px, f"Timer: {str(time.time())}")
+                # Show individual block position
                 stdscr.addstr(
-                    debug_py, debug_px, f"Timer: {str(time.time())}"
-                )  # Show timer
-                stdscr.addstr(
-                    debug_py + 1, debug_px, f"{active_piece.blocks_pos[3]}"
-                )  # Show individual block position
-                stdscr.addstr(debug_py + 2, debug_px, f"{moves['down']}")
-                stdscr.addstr(debug_py + 3, debug_px, f"Score: {score}")  # Show score
+                    debug_py + 2, debug_px, f"Pos: {active_piece.blocks_pos[3]}"
+                )
+                # Show whether the active piece can fall down
+                stdscr.addstr(debug_py + 3, debug_px, f"{moves['down']}")
 
             board.clear()
             stdscr.refresh()
