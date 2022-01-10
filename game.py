@@ -7,7 +7,7 @@ class Game_board:
         self.width = width
         self.height = height
         self.board = [[0 for _ in range(self.width)] for _ in range(self.height)]
-        self.board.append([2 for _ in range(self.width)])
+        self.board.append([3 for _ in range(self.width)])
         
     def get(self) -> str:
         string = ""
@@ -100,7 +100,7 @@ def can_move(board: Game_board, piece: Piece) -> dict:
         try:
             d["left"] = False if block[1] - 1 == -1 or not d["left"] else True
             d["right"] = False if block[1] + 1 == board.width or not d["right"] else True
-            d["down"] = False if board.board[block[0] + 1][block[1]] == 2 or not d["down"] else True
+            d["down"] = False if board.board[block[0] + 1][block[1]] in (2, 3) or not d["down"] else True
         except IndexError:
             return {"left": False, "right": False, "down": False}
     return d
@@ -108,11 +108,13 @@ def can_move(board: Game_board, piece: Piece) -> dict:
                
 def play_game():
     def _play_game(stdscr):
+        DEBUGGING = True
         stdscr.clear()
         score = 0
         board = Game_board()
         playing = True
         moved = False
+        view_size = "medium"
         # Each piece is represented by 4 blocks, with positions
         # relative to the center of a 9x9 square  (apart from
         # the long bar and square) (x, y, color)
@@ -124,7 +126,6 @@ def play_game():
                   [(1, 0, 1), (0, 0 , 1), (0, -1, 1), (-1, -1, 1)], # S block
                  ]
         active_piece = Piece(blocks=random.choice(pieces))
-        
         while playing:
             moves = can_move(board, active_piece)
 
@@ -146,29 +147,45 @@ def play_game():
             # Re-Draw the piece to the board
             active_piece.blocks_pos = active_piece.get_block_pos()
             draw_to_board(board, active_piece)
+            
+
+            # Location of the debug info
+            debug_py = 22
+            debug_px = 0
+            match view_size:
+                case "small":
+                    display_board = board.board[:-1]
+                case "medium":
+                    debug_py = 0
+                    debug_px = 26
+                    display_board = [[p for p in board.board[n] for _ in (0, 1)] for n, line in enumerate(board.board[:-1]) for _ in (0, 1)]
 
             # Display the board from the board matrix
-            for x, line in enumerate(board.board[:-1]):
+            for x, line in enumerate(display_board):
                 for y, pixel in enumerate(line):
-                    match pixel:
-                        # Falling block
-                        case 1:
-                            stdscr.addstr(x, y, chr(9633))
-                            
-                        # Still block
-                        case 2:
-                            stdscr.addstr(x, y, chr(9633))
- 
-                        # Empty Space
-                        case 0:
-                            stdscr.addstr(x, y, chr(9632))
+                    try:
+                        match pixel:
+                            # Falling block
+                            case 1:
+                                stdscr.addstr(x, y, chr(9633))
+                                
+                            # Still block
+                            case 2:
+                                stdscr.addstr(x, y, chr(9633))
+    
+                            # Empty Space
+                            case 0:
+                                stdscr.addstr(x, y, chr(9632))
+                    except curses.error:
+                        pass
 
 
             # DEBUG AREA
-            stdscr.addstr(22, 0, f"Timer: {str(time.time())}") # Show timer
-            stdscr.addstr(23, 0, f"{active_piece.blocks_pos[3]}") # Show individual block position
-            stdscr.addstr(24, 0, f"{moves['down']}")
-            stdscr.addstr(25, 0, f"Score: {score}") # Show score
+            if DEBUGGING:
+                stdscr.addstr(debug_py, debug_px, f"Timer: {str(time.time())}") # Show timer
+                stdscr.addstr(debug_py+1, debug_px, f"{active_piece.blocks_pos[3]}") # Show individual block position
+                stdscr.addstr(debug_py+2, debug_px, f"{moves['down']}")
+                stdscr.addstr(debug_py+3, debug_px, f"Score: {score}") # Show score
 
 
             board.clear()
@@ -197,7 +214,9 @@ def play_game():
                 
                 stdscr.refresh()
                     
-
+            if active_piece.position[0] == -1:
+                break
+        print(f"Score: {score}")
     return curses.wrapper(_play_game)
 
 print(play_game())
