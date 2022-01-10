@@ -1,8 +1,6 @@
 import time, random
 import curses
 from dataclasses import dataclass
-import colorama
-from colorama import Fore
 
 
 class Game_board:
@@ -35,7 +33,7 @@ class Game_board:
         for pixel in self.board[line_index]:
             if pixel == 3:
                 pass
-            elif pixel != 2:
+            elif pixel < 2:
                 return False
         return True
 
@@ -78,7 +76,11 @@ class Piece:
         blocks = blocks if blocks else self.blocks
         blocks_pos = [0 for _ in blocks]
         for x, block in enumerate(self.blocks):
-            positions = [block[0] + self.position[0], block[1] + self.position[1]]
+            positions = [
+                block[0] + self.position[0],
+                block[1] + self.position[1],
+                block[2],
+            ]
             blocks_pos[x] = positions
         return blocks_pos
 
@@ -156,6 +158,17 @@ def can_move(board: Game_board, piece: Piece) -> dict:
 
 def play_game():
     def _play_game(stdscr):
+        curses.start_color()
+        if not curses.has_colors():
+            raise Exception
+        curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_WHITE)
+        curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_BLACK)
+        curses.init_pair(4, curses.COLOR_MAGENTA, curses.COLOR_MAGENTA)
+        curses.init_pair(5, curses.COLOR_CYAN, curses.COLOR_CYAN)
+        curses.init_pair(6, curses.COLOR_YELLOW, curses.COLOR_YELLOW)
+        curses.init_pair(7, curses.COLOR_BLUE, curses.COLOR_BLUE)
+        curses.init_pair(8, curses.COLOR_RED, curses.COLOR_RED)
+        curses.init_pair(9, curses.COLOR_GREEN, curses.COLOR_GREEN)
         LEVEL = 0
         DEBUGGING = True
         stdscr.clear()
@@ -184,7 +197,7 @@ def play_game():
             # If the block lands, create a new one
             if not moves["down"]:
                 for block in active_piece.blocks_pos:
-                    board.add_block(block[0], block[1], 2)
+                    board.add_block(block[0], block[1], block[2])
                 active_piece.position = [0, 5]
                 active_piece.blocks = random.choice(pieces)
 
@@ -221,26 +234,9 @@ def play_game():
             for x, line in enumerate(display_board):
                 for y, pixel in enumerate(line):
                     try:
-                        match pixel:
-                            # Falling block
-                            case 1:
-                                stdscr.addstr(x, y, chr(9633))
-
-                            # Still block
-                            case 2:
-                                stdscr.addstr(x, y, f"{chr(9633)}")
-
-                            # Permanent block
-                            case 3:
-                                # stdscr.addstr(x, y, "3")
-                                pass
-
-                            # Empty Space
-                            case 0:
-                                stdscr.addstr(x, y, chr(9632))
-
-                            case _:
-                                pass
+                        pixel += 1 if pixel <= 1 else 0
+                        if pixel != 3:
+                            stdscr.addstr(x, y, "_", curses.color_pair(pixel))
                     except curses.error:
                         pass
 
@@ -300,5 +296,4 @@ def play_game():
 
 
 if __name__ == "__main__":
-    colorama.init()
     print(play_game())
