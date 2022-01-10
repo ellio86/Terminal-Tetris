@@ -30,7 +30,9 @@ class Game_board:
 
     def check_line(self, line_index):
         for pixel in self.board[line_index]:
-            if pixel != 2:
+            if pixel == 3:
+                pass
+            elif pixel != 2:
                 return False
         return True
 
@@ -91,7 +93,6 @@ def rotate(board: Game_board, piece: Piece, dir: str = None) -> None:
     can_rotate = True
     rotated = piece.calc_rotate(dir)
     for block in rotated:
-        print(board.check_block(block[0], block[1]))
         if (
             board.check_block(
                 piece.position[0] + block[0], piece.position[1] + block[1]
@@ -124,6 +125,7 @@ def can_move(board: Game_board, piece: Piece) -> dict:
             )
         except IndexError:
             d["left"] = False
+            continue
 
         try:
             d["right"] = (
@@ -133,6 +135,7 @@ def can_move(board: Game_board, piece: Piece) -> dict:
             )
         except IndexError:
             d["right"] = False
+            continue
 
         try:
             d["down"] = (
@@ -154,7 +157,8 @@ def play_game():
         board = Game_board()
         playing = True
         moved = False
-        view_size = "medium"
+        view_size = "small"
+        prev_time = "0"
 
         # Each piece is represented by 4 blocks, with positions
         # relative to the center of a 9x9 square  (apart from
@@ -222,11 +226,15 @@ def play_game():
 
                             # Permanent block
                             case 3:
-                                stdscr.addstr(x, y, "3")
+                                # stdscr.addstr(x, y, "3")
+                                pass
 
                             # Empty Space
                             case 0:
                                 stdscr.addstr(x, y, chr(9632))
+
+                            case _:
+                                pass
                     except curses.error:
                         pass
 
@@ -252,24 +260,26 @@ def play_game():
             # Handle user input
             code = stdscr.getch()
             if code != -1:
-                match chr(code).lower():
-                    case "a":
-                        if moves["left"]:
-                            active_piece.position[1] -= 1
-                    case "d":
-                        if moves["right"]:
-                            active_piece.position[1] += 1
-                    case "s":
-                        if moves["down"]:
-                            active_piece.position[0] += 1
-                    case "e":
-                        rotate(board, active_piece, "L")
-                    case "q":
-                        rotate(board, active_piece, "R")
+                if not str(time.time())[12] == prev_time:
+                    match chr(code).lower():
+                        case "a":
+                            if moves["left"]:
+                                active_piece.position[1] -= 1
+                                prev_time = str(time.time())[12]
+                        case "d":
+                            if moves["right"]:
+                                active_piece.position[1] += 1
+                                prev_time = str(time.time())[12]
+                        case "s":
+                            if moves["down"]:
+                                active_piece.position[0] += 1
+                                prev_time = str(time.time())[12]
+                        case "e":
+                            rotate(board, active_piece, "L")
+                        case "q":
+                            rotate(board, active_piece, "R")
 
                 stdscr.refresh()
-
-        print(f"Score: {score}")
 
     return curses.wrapper(_play_game)
 
