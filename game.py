@@ -55,7 +55,9 @@ class Game_board:
         for line in self.board:
             newline = []
             for space in line:
-                newline.append(0) if space == 1 else newline.append(space)
+                newline.append(0) if 11 > space >= 4 or space == 2 else newline.append(
+                    space
+                )
 
             clear_board.append(newline)
         self.board = clear_board
@@ -86,10 +88,14 @@ class Piece:
 
     def calc_rotate(self, dir: str = None) -> list[tuple]:
         """Rotate the piece by 90 degrees"""
+        if self.blocks_pos[0][2] == 2:
+            return self.blocks
         new_blocks = []
         for block in self.blocks:
             new_block = (
-                (-block[1], block[0], 1) if dir == "L" else (block[1], -block[0], 1)
+                (-block[1], block[0], block[2])
+                if dir == "L"
+                else (block[1], -block[0], block[2])
             )
             new_blocks.append(new_block)
         return new_blocks
@@ -162,13 +168,13 @@ def play_game():
         if not curses.has_colors():
             raise Exception
         curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_WHITE)
-        curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_BLACK)
-        curses.init_pair(4, curses.COLOR_MAGENTA, curses.COLOR_MAGENTA)
-        curses.init_pair(5, curses.COLOR_CYAN, curses.COLOR_CYAN)
-        curses.init_pair(6, curses.COLOR_YELLOW, curses.COLOR_YELLOW)
-        curses.init_pair(7, curses.COLOR_BLUE, curses.COLOR_BLUE)
-        curses.init_pair(8, curses.COLOR_RED, curses.COLOR_RED)
-        curses.init_pair(9, curses.COLOR_GREEN, curses.COLOR_GREEN)
+        curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLACK)
+        curses.init_pair(4, curses.COLOR_WHITE, curses.COLOR_MAGENTA)
+        curses.init_pair(5, curses.COLOR_WHITE, curses.COLOR_CYAN)
+        curses.init_pair(6, curses.COLOR_WHITE, curses.COLOR_YELLOW)
+        curses.init_pair(7, curses.COLOR_WHITE, curses.COLOR_BLUE)
+        curses.init_pair(8, curses.COLOR_WHITE, curses.COLOR_RED)
+        curses.init_pair(9, curses.COLOR_WHITE, curses.COLOR_GREEN)
         LEVEL = 0
         DEBUGGING = True
         stdscr.clear()
@@ -183,11 +189,13 @@ def play_game():
         # relative to the center of a 9x9 square  (apart from
         # the long bar and square) (x, y, color)
         pieces = [
-            [(-1, 0, 1), (0, -1, 1), (0, 0, 1), (0, 1, 1)],  # T Block
-            [(0, 0, 1), (0, 1, 1), (1, 0, 1), (-1, 1, 1)],  # Z Block
-            [(0, -1, 1), (0, 0, 1), (0, 1, 1), (1, 1, 1)],  # L block
-            [(0, 1, 1), (0, 0, 1), (0, -1, 1), (-1, -1, 1)],  # r block
-            [(1, 0, 1), (0, 0, 1), (0, -1, 1), (-1, -1, 1)],  # S block
+            [(-1, 0, 4), (0, -1, 4), (0, 0, 4), (0, 1, 4)],  # T Block
+            [(0, 0, 8), (0, 1, 8), (1, 0, 8), (-1, 1, 8)],  # Z Block
+            [(0, -1, 7), (0, 0, 7), (0, 1, 7), (-1, 1, 7)],  # L block
+            [(0, 1, 6), (0, 0, 6), (0, -1, 6), (-1, -1, 6)],  # r block
+            [(1, 0, 9), (0, 0, 9), (0, -1, 9), (-1, -1, 9)],  # S block
+            [(0, -1, 5), (0, -2, 5), (0, 0, 5), (0, 1, 5)],  # | Block
+            [(0, 0, 2), (-1, 0, 2), (0, -1, 2), (-1, -1, 2)],  # Square Block
         ]
 
         active_piece = Piece(blocks=random.choice(pieces))
@@ -195,9 +203,9 @@ def play_game():
             moves = can_move(board, active_piece)
 
             # If the block lands, create a new one
-            if not moves["down"]:
+            if not moves["down"] and str(time.time())[11] == "0":
                 for block in active_piece.blocks_pos:
-                    board.add_block(block[0], block[1], block[2])
+                    board.add_block(block[0], block[1], block[2] + 10)
                 active_piece.position = [0, 5]
                 active_piece.blocks = random.choice(pieces)
 
@@ -234,9 +242,12 @@ def play_game():
             for x, line in enumerate(display_board):
                 for y, pixel in enumerate(line):
                     try:
+                        pixel = pixel - 10 if pixel > 9 else pixel
                         pixel += 1 if pixel <= 1 else 0
-                        if pixel != 3:
-                            stdscr.addstr(x, y, "_", curses.color_pair(pixel))
+                        if pixel == 0:
+                            stdscr.addstr(x, y, "_", curses.color_pair(0))
+                        elif pixel != 3:
+                            stdscr.addstr(x, y, chr(9633), curses.color_pair(pixel))
                     except curses.error:
                         pass
 
