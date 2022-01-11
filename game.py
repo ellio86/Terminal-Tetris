@@ -27,7 +27,10 @@ class Game_board:
             self.board[x][y] = z
 
     def check_block(self, x, y) -> int:
-        return self.board[x][y]
+        try:
+            return self.board[x][y]
+        except IndexError:
+            return 3
 
     def check_line(self, line_index):
         for pixel in self.board[line_index]:
@@ -72,6 +75,10 @@ class Piece:
         self.height = max([block[0] for block in self.blocks]) + 1
         self.speed = speed
         self.blocks_pos = self.get_block_pos()
+        self.leftmost = None
+        self.rightmost = None
+        self.downwardmost = None
+        self.update_block_extremities()
 
     def get_block_pos(self, blocks: list[tuple] = None) -> None:
         """Returns a list of tuples containing the blocks exact co-ordinates."""
@@ -85,6 +92,37 @@ class Piece:
             ]
             blocks_pos[x] = positions
         return blocks_pos
+
+    def update_block_extremities(self) -> None:
+        leftmost_val = self.blocks[0][1]
+        leftmost_block = [0]
+        rightmost_val = self.blocks[0][1]
+        rightmost_block = [0]
+        downwardmost_val = self.blocks[0][0]
+        downwardmost_block = [0]
+        for n, block in enumerate(self.blocks):
+            if block[1] >= rightmost_val:
+                rightmost_block[0] = n
+            if block[1] <= leftmost_val:
+                leftmost_block[0] = n
+            if block[0] >= downwardmost_val:
+                downwardmost_block[0] = n
+
+        for n, block in enumerate(self.blocks):
+            if block[1] == rightmost_val and n not in rightmost_block:
+                rightmost_block.append(n)
+            if block[1] == leftmost_val and n not in leftmost_block:
+                leftmost_block.append(n)
+            if (
+                block[0] == downwardmost_val
+                or (block[0] + 1, block[1]) not in [(b[0], b[1]) for b in self.blocks]
+                and n not in downwardmost_block
+            ):
+                downwardmost_block.append(n)
+
+        self.leftmost = leftmost_block
+        self.rightmost = rightmost_block
+        self.downwardmost = downwardmost_block
 
     def calc_rotate(self, dir: str = None) -> list[tuple]:
         """Rotate the piece by 90 degrees"""
@@ -115,6 +153,7 @@ def rotate(board: Game_board, piece: Piece, dir: str = None) -> None:
             can_rotate = False
     if can_rotate:
         piece.blocks = rotated
+        piece.update_block_extremities()
 
 
 def draw_to_board(board: Game_board, *pieces: Piece) -> None:
@@ -129,35 +168,44 @@ def draw_to_board(board: Game_board, *pieces: Piece) -> None:
 def can_move(board: Game_board, piece: Piece) -> dict:
     """Checks whether a piece can move left, right or down."""
     d = {"left": True, "right": True, "down": True}
-    for block in piece.blocks_pos:
-        try:
+    try:
+        for block in piece.leftmost:
+            left = piece.blocks_pos[block]
             d["left"] = (
                 False
-                if board.board[block[0]][block[1] - 1] != 0 or not d["left"]
+                if left[1] - 1 == 0
+                or board.board[left[0]][left[1] - 1] >= 2
+                or not d["left"]
                 else True
             )
-        except IndexError:
-            d["left"] = False
-            continue
+    except IndexError:
+        d["left"] = False
 
-        try:
+    try:
+        for block in piece.rightmost:
+            right = piece.blocks_pos[block]
             d["right"] = (
                 False
-                if board.board[block[0]][block[1] + 1] != 0 or not d["right"]
+                if right[1] + 1 == 11
+                or board.board[right[0]][right[1] + 1] >= 2
+                or not d["right"]
                 else True
             )
-        except IndexError:
-            d["right"] = False
-            continue
+    except IndexError:
+        d["right"] = False
 
-        try:
+    try:
+        for block in piece.downwardmost:
+            bottom = piece.blocks_pos[block]
             d["down"] = (
                 False
-                if board.board[block[0] + 1][block[1]] != 0 or not d["down"]
+                if bottom[0] + 1 == 20
+                or board.board[bottom[0] + 1][bottom[1]] >= 2
+                or not d["down"]
                 else True
             )
-        except IndexError:
-            d["down"] = False
+    except IndexError:
+        d["down"] = False
 
     return d
 
@@ -184,15 +232,17 @@ def play_game():
         moved = False
         view_size = "medium"
         prev_time = "0"
+        t = "0"
+        check = False
 
         # Each piece is represented by 4 blocks, with positions
         # relative to the center of a 9x9 square  (apart from
-        # the long bar and square) (x, y, color)
+        # the long bar and square) (x, -y, color)
         pieces = [
             [(-1, 0, 4), (0, -1, 4), (0, 0, 4), (0, 1, 4)],  # T Block
             [(0, 0, 8), (0, 1, 8), (1, 0, 8), (-1, 1, 8)],  # Z Block
             [(0, -1, 7), (0, 0, 7), (0, 1, 7), (-1, 1, 7)],  # L block
-            [(0, 1, 6), (0, 0, 6), (0, -1, 6), (-1, -1, 6)],  # r block
+            [(0, 1, 6), (0, 0, 6), (0, -1, 6), (-1, -1, 6)],  # J block
             [(1, 0, 9), (0, 0, 9), (0, -1, 9), (-1, -1, 9)],  # S block
             [(0, -1, 5), (0, -2, 5), (0, 0, 5), (0, 1, 5)],  # | Block
             [(0, 0, 2), (-1, 0, 2), (0, -1, 2), (-1, -1, 2)],  # Square Block
@@ -203,7 +253,7 @@ def play_game():
             moves = can_move(board, active_piece)
 
             # If the block lands, create a new one
-            if not moves["down"] and str(time.time())[11] == "0":
+            if not moves["down"] and str(time.time())[11] == t:
                 for block in active_piece.blocks_pos:
                     board.add_block(block[0], block[1], block[2] + 10)
                 active_piece.position = [0, 5]
@@ -214,6 +264,8 @@ def play_game():
                 if moves["down"] and not moved:
                     moved = True
                     active_piece.position[0] += active_piece.speed
+                    t = "0"
+
             else:
                 moved = False
 
@@ -253,6 +305,7 @@ def play_game():
 
             # Show score
             stdscr.addstr(debug_py, debug_px, f"Score: {score}")
+
             # DEBUG AREA
             if DEBUGGING:
                 # Show timer
@@ -261,8 +314,25 @@ def play_game():
                 stdscr.addstr(
                     debug_py + 2, debug_px, f"Pos: {active_piece.blocks_pos[3]}"
                 )
-                # Show whether the active piece can fall down
-                stdscr.addstr(debug_py + 3, debug_px, f"{moves['down']}")
+                # Extra debug space
+                stdscr.addstr(
+                    debug_py + 3,
+                    debug_px,
+                    f"leftmost: {active_piece.blocks_pos[active_piece.leftmost[0]]}",
+                )
+                stdscr.addstr(
+                    debug_py + 4,
+                    debug_px,
+                    f"rightmost: {active_piece.blocks_pos[active_piece.rightmost[0]]}",
+                )
+                stdscr.addstr(
+                    debug_py + 5,
+                    debug_px,
+                    f"downwardmost: {active_piece.blocks_pos[active_piece.downwardmost[0]]}",
+                )
+                stdscr.addstr(debug_py + 6, debug_px, f'd["left"]: {moves["left"]}')
+                stdscr.addstr(debug_py + 7, debug_px, f'd["right"]: {moves["right"]}')
+                stdscr.addstr(debug_py + 8, debug_px, f'd["down"]: {moves["down"]}')
 
             board.clear()
             stdscr.refresh()
@@ -281,21 +351,45 @@ def play_game():
 
             # Handle user input
             code = stdscr.getch()
+            active_piece.update_block_extremities()
             if code != -1:
                 if not str(time.time())[12] == prev_time:
                     match chr(code).lower():
                         case "a":
-                            if moves["left"] and active_piece.position[1] - 1 != 0:
+                            if (
+                                moves["left"]
+                                and active_piece.blocks_pos[active_piece.leftmost[0]][1]
+                                - 1
+                                != 0
+                            ):
                                 active_piece.position[1] -= 1
                                 prev_time = str(time.time())[12]
+                                check = True
                         case "d":
-                            if moves["right"] and active_piece.position[1] + 1 != 11:
+                            if (
+                                moves["right"]
+                                and active_piece.blocks_pos[active_piece.rightmost[0]][
+                                    1
+                                ]
+                                + 1
+                                != 11
+                            ):
                                 active_piece.position[1] += 1
+                                if active_piece.position[1] == 11:
+                                    active_piece.position[1] -= 1
                                 prev_time = str(time.time())[12]
                         case "s":
-                            if moves["down"] and active_piece.position[0] + 1 != 20:
+                            if (
+                                moves["down"]
+                                and active_piece.blocks_pos[
+                                    active_piece.downwardmost[0]
+                                ][0]
+                                + 1
+                                != 20
+                            ):
                                 active_piece.position[0] += 1
                                 prev_time = str(time.time())[12]
+                                t = str(time.time())[11]
                         case "e":
                             rotate(board, active_piece, "L")
                         case "q":
