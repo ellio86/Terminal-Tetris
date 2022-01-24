@@ -1,6 +1,5 @@
 import time, random
 import curses
-from dataclasses import dataclass
 
 
 class Game_board:
@@ -226,6 +225,7 @@ def save_score(file, score) -> None:
 
 def play_game():
     def _play_game(stdscr):
+        stdscr.clear()
         curses.start_color()
         if not curses.has_colors():
             raise Exception
@@ -237,8 +237,6 @@ def play_game():
         curses.init_pair(7, curses.COLOR_WHITE, curses.COLOR_BLUE)
         curses.init_pair(8, curses.COLOR_WHITE, curses.COLOR_RED)
         curses.init_pair(9, curses.COLOR_WHITE, curses.COLOR_GREEN)
-        stdscr.clear()
-        
         ######### SETTINGS #########
         debugging = False
         level = 0
@@ -338,11 +336,7 @@ def play_game():
             try:
                 highscore = read_score(highscore_f)
             except FileNotFoundError:
-                highscore = 0
-                
-            if score > highscore:
-                highscore = score
-                save_score(highscore_f, score)
+                pass
                 
             # Show score
             stdscr.addstr(debug_py, debug_px, f"Score: {score}")
@@ -385,15 +379,20 @@ def play_game():
             board.clear()
             stdscr.refresh()
             stdscr.timeout(1)
-            match board.check_lines():
-                case 1:
-                    score += 40 * (level + 1)
-                case 2:
-                    score += 100 * (level + 1)
-                case 3:
-                    score += 300 * (level + 1)
-                case 4:
-                    score += 1200 * (level + 1)
+            if board.check_lines:
+                match board.check_lines():
+                    case 1:
+                        score += 40 * (level + 1)
+                    case 2:
+                        score += 100 * (level + 1)
+                    case 3:
+                        score += 300 * (level + 1)
+                    case 4:
+                        score += 1200 * (level + 1)
+                        
+                # Update and save the highscore
+                highscore = score if score > highscore else highscore
+                save_score(highscore_f, highscore) if highscore_f else None
 
             score += board.check_lines() * 1000
 
