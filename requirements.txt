@@ -1,3 +1,2 @@
 windows-curses
 pre-commit
-colorama

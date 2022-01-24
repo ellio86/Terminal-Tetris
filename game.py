@@ -223,28 +223,29 @@ def play_game():
         curses.init_pair(7, curses.COLOR_WHITE, curses.COLOR_BLUE)
         curses.init_pair(8, curses.COLOR_WHITE, curses.COLOR_RED)
         curses.init_pair(9, curses.COLOR_WHITE, curses.COLOR_GREEN)
-        LEVEL = 0
-        DEBUGGING = True
         stdscr.clear()
+        
+        debugging = False
+        level = 0
         score = 0
         board = Game_board()
         playing = True
         moved = False
         view_size = "medium"
-        prev_time = "0"
         t = "0"
-        check = False
+        #check = False
+        #prev_time = "0"
 
         # Each piece is represented by 4 blocks, with positions
         # relative to the center of a 9x9 square  (apart from
         # the long bar and square) (x, -y, color)
         pieces = [
-            [(-1, 0, 4), (0, -1, 4), (0, 0, 4), (0, 1, 4)],  # T Block
-            [(0, 0, 8), (0, 1, 8), (1, 0, 8), (-1, 1, 8)],  # Z Block
-            [(0, -1, 7), (0, 0, 7), (0, 1, 7), (-1, 1, 7)],  # L block
-            [(0, 1, 6), (0, 0, 6), (0, -1, 6), (-1, -1, 6)],  # J block
-            [(1, 0, 9), (0, 0, 9), (0, -1, 9), (-1, -1, 9)],  # S block
-            [(0, -1, 5), (0, -2, 5), (0, 0, 5), (0, 1, 5)],  # | Block
+            [(-1, 0, 4), (0, -1, 4), (0, 0, 4), (0, 1, 4)],    # T Block
+            [(0, 0, 8), (0, 1, 8), (1, 0, 8), (-1, 1, 8)],     # Z Block
+            [(0, -1, 7), (0, 0, 7), (0, 1, 7), (-1, 1, 7)],    # L block
+            [(0, 1, 6), (0, 0, 6), (0, -1, 6), (-1, -1, 6)],   # J block
+            [(1, 0, 9), (0, 0, 9), (0, -1, 9), (-1, -1, 9)],   # S block
+            [(0, -1, 5), (0, -2, 5), (0, 0, 5), (0, 1, 5)],    # | Block
             [(0, 0, 2), (-1, 0, 2), (0, -1, 2), (-1, -1, 2)],  # Square Block
         ]
 
@@ -307,7 +308,7 @@ def play_game():
             stdscr.addstr(debug_py, debug_px, f"Score: {score}")
 
             # DEBUG AREA
-            if DEBUGGING:
+            if debugging:
                 # Show timer
                 stdscr.addstr(debug_py + 1, debug_px, f"Timer: {str(time.time())}")
                 # Show individual block position
@@ -339,63 +340,57 @@ def play_game():
             stdscr.timeout(1)
             match board.check_lines():
                 case 1:
-                    score += 40 * (LEVEL + 1)
+                    score += 40 * (level + 1)
                 case 2:
-                    score += 100 * (LEVEL + 1)
+                    score += 100 * (level + 1)
                 case 3:
-                    score += 300 * (LEVEL + 1)
+                    score += 300 * (level + 1)
                 case 4:
-                    score += 1200 * (LEVEL + 1)
+                    score += 1200 * (level + 1)
 
             score += board.check_lines() * 1000
 
             # Handle user input
             code = stdscr.getch()
             active_piece.update_block_extremities()
+            
+            # and not str(time.time())[12] == prev_time  <-- old code might still need
             if code != -1:
-                if not str(time.time())[12] == prev_time:
-                    match chr(code).lower():
-                        case "a":
-                            if (
-                                moves["left"]
-                                and active_piece.blocks_pos[active_piece.leftmost[0]][1]
-                                - 1
-                                != 0
-                            ):
+                match chr(code).lower():
+                    case "a":
+                        if (
+                            moves["left"]
+                            and active_piece.blocks_pos[active_piece.leftmost[0]][1] - 1
+                            != 0
+                        ):
+                            active_piece.position[1] -= 1
+                            #prev_time = str(time.time())[12]
+                            #check = True
+                    case "d":
+                        if (
+                            moves["right"]
+                            and active_piece.blocks_pos[active_piece.rightmost[0]][1]+ 1 
+                            != 11
+                        ):
+                            active_piece.position[1] += 1
+                            if active_piece.position[1] == 11:
                                 active_piece.position[1] -= 1
-                                prev_time = str(time.time())[12]
-                                check = True
-                        case "d":
-                            if (
-                                moves["right"]
-                                and active_piece.blocks_pos[active_piece.rightmost[0]][
-                                    1
-                                ]
-                                + 1
-                                != 11
-                            ):
-                                active_piece.position[1] += 1
-                                if active_piece.position[1] == 11:
-                                    active_piece.position[1] -= 1
-                                prev_time = str(time.time())[12]
-                        case "s":
-                            if (
-                                moves["down"]
-                                and active_piece.blocks_pos[
-                                    active_piece.downwardmost[0]
-                                ][0]
-                                + 1
-                                != 20
-                            ):
-                                active_piece.position[0] += 1
-                                prev_time = str(time.time())[12]
-                                t = str(time.time())[11]
-                        case "e":
-                            rotate(board, active_piece, "L")
-                        case "q":
-                            rotate(board, active_piece, "R")
+                            #prev_time = str(time.time())[12]
+                    case "s":
+                        if (
+                            moves["down"]
+                            and active_piece.blocks_pos[active_piece.downwardmost[0]][0] + 1
+                            != 20
+                        ):
+                            active_piece.position[0] += 1
+                            #prev_time = str(time.time())[12]
+                            t = str(time.time())[11]
+                    case "e":
+                        rotate(board, active_piece, "L")
+                    case "q":
+                        rotate(board, active_piece, "R")
 
-                stdscr.refresh()
+            stdscr.refresh()
 
     return curses.wrapper(_play_game)
 
