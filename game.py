@@ -209,6 +209,20 @@ def can_move(board: Game_board, piece: Piece) -> dict:
 
     return d
 
+def read_score(file) -> int:
+    with open(file, "r") as f:
+        if f.readlines():
+            return int(f.readlines()[0])
+        else:
+            return 0
+        
+def save_score(file, score) -> None:
+    try:
+        with open(file, "x") as f:
+            f.write(str(score))
+    except FileExistsError:
+        with open(file, "w") as f:
+            f.write(str(score))
 
 def play_game():
     def _play_game(stdscr):
@@ -225,7 +239,8 @@ def play_game():
         curses.init_pair(9, curses.COLOR_WHITE, curses.COLOR_GREEN)
         stdscr.clear()
         
-        debugging = False
+        ######### SETTINGS #########
+        debugging = True
         level = 0
         score = 0
         board = Game_board()
@@ -233,8 +248,10 @@ def play_game():
         moved = False
         view_size = "medium"
         t = "0"
+        highscore_f = "highscore.txt"
         #check = False
         #prev_time = "0"
+        ############################
 
         # Each piece is represented by 4 blocks, with positions
         # relative to the center of a 9x9 square  (apart from
@@ -253,6 +270,10 @@ def play_game():
         while playing:
             moves = can_move(board, active_piece)
 
+            # Game over condition
+            if not moves["down"] and active_piece.position[0] == 0:
+                playing = False
+                
             # If the block lands, create a new one
             if not moves["down"] and str(time.time())[11] == t:
                 for block in active_piece.blocks_pos:
@@ -269,6 +290,7 @@ def play_game():
 
             else:
                 moved = False
+                
 
             # Re-Draw the piece to the board
             active_piece.blocks_pos = active_piece.get_block_pos()
@@ -303,37 +325,62 @@ def play_game():
                             stdscr.addstr(x, y, chr(9633), curses.color_pair(pixel))
                     except curses.error:
                         pass
+            
+            # Game over screen
+            game_over = """
+            ################################
+            #                              #
+            #          Game over !         #
+            #                              #
+            ################################
+            """
 
+            try:
+                highscore = read_score(highscore_f)
+            except FileNotFoundError:
+                highscore = 0
+                
+            if score > highscore:
+                highscore = score
+                save_score(highscore_f, score)
+                
             # Show score
             stdscr.addstr(debug_py, debug_px, f"Score: {score}")
+            stdscr.addstr(debug_py + 2, debug_px, f"Highscore: {highscore}")
 
             # DEBUG AREA
             if debugging:
                 # Show timer
-                stdscr.addstr(debug_py + 1, debug_px, f"Timer: {str(time.time())}")
+                stdscr.addstr(
+                    debug_py + 3, 
+                    debug_px, 
+                    f"Timer: {str(time.time())}"
+                )
                 # Show individual block position
                 stdscr.addstr(
-                    debug_py + 2, debug_px, f"Pos: {active_piece.blocks_pos[3]}"
+                    debug_py + 4, 
+                    debug_px, 
+                    f"Pos: {active_piece.blocks_pos[3]}"
                 )
                 # Extra debug space
                 stdscr.addstr(
-                    debug_py + 3,
+                    debug_py + 5,
                     debug_px,
                     f"leftmost: {active_piece.blocks_pos[active_piece.leftmost[0]]}",
                 )
                 stdscr.addstr(
-                    debug_py + 4,
+                    debug_py + 6,
                     debug_px,
                     f"rightmost: {active_piece.blocks_pos[active_piece.rightmost[0]]}",
                 )
                 stdscr.addstr(
-                    debug_py + 5,
+                    debug_py + 7,
                     debug_px,
                     f"downwardmost: {active_piece.blocks_pos[active_piece.downwardmost[0]]}",
                 )
-                stdscr.addstr(debug_py + 6, debug_px, f'd["left"]: {moves["left"]}')
-                stdscr.addstr(debug_py + 7, debug_px, f'd["right"]: {moves["right"]}')
-                stdscr.addstr(debug_py + 8, debug_px, f'd["down"]: {moves["down"]}')
+                stdscr.addstr(debug_py + 8, debug_px, f'd["left"]: {moves["left"]}')
+                stdscr.addstr(debug_py + 9, debug_px, f'd["right"]: {moves["right"]}')
+                stdscr.addstr(debug_py + 10, debug_px, f'd["down"]: {moves["down"]}')
 
             board.clear()
             stdscr.refresh()
@@ -391,6 +438,10 @@ def play_game():
                         rotate(board, active_piece, "R")
 
             stdscr.refresh()
+        stdscr.addstr(5, 10, game_over)
+        stdscr.refresh()
+        time.sleep(5)
+        quit()
 
     return curses.wrapper(_play_game)
 
