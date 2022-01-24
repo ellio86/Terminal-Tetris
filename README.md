@@ -1,5 +1,5 @@
 # Terminal Tetris
-![Tetris](https://i.imgur.com/YMUCgEC.png)
+![Terminal-Tetris](https://i.imgur.com/YMUCgEC.png)
 
 This is a windows based project, using the python programming language and the windows-curses python module.
 

@@ -211,9 +211,9 @@ def can_move(board: Game_board, piece: Piece) -> dict:
 
 def read_score(file) -> int:
     with open(file, "r") as f:
-        if f.readlines():
+        try:
             return int(f.readlines()[0])
-        else:
+        except IndexError:
             return 0
         
 def save_score(file, score) -> None:
@@ -240,7 +240,7 @@ def play_game():
         stdscr.clear()
         
         ######### SETTINGS #########
-        debugging = True
+        debugging = False
         level = 0
         score = 0
         board = Game_board()
@@ -250,7 +250,7 @@ def play_game():
         t = "0"
         highscore_f = "highscore.txt"
         #check = False
-        #prev_time = "0"
+        prev_time = "0"
         ############################
 
         # Each piece is represented by 4 blocks, with positions
@@ -401,7 +401,6 @@ def play_game():
             code = stdscr.getch()
             active_piece.update_block_extremities()
             
-            # and not str(time.time())[12] == prev_time  <-- old code might still need
             if code != -1:
                 match chr(code).lower():
                     case "a":
@@ -409,28 +408,30 @@ def play_game():
                             moves["left"]
                             and active_piece.blocks_pos[active_piece.leftmost[0]][1] - 1
                             != 0
+                            and not str(time.time())[12] == prev_time
                         ):
                             active_piece.position[1] -= 1
-                            #prev_time = str(time.time())[12]
-                            #check = True
+                            prev_time = str(time.time())[12]
                     case "d":
                         if (
                             moves["right"]
                             and active_piece.blocks_pos[active_piece.rightmost[0]][1]+ 1 
                             != 11
+                            and not str(time.time())[12] == prev_time
                         ):
                             active_piece.position[1] += 1
                             if active_piece.position[1] == 11:
                                 active_piece.position[1] -= 1
-                            #prev_time = str(time.time())[12]
+                            prev_time = str(time.time())[12]
                     case "s":
                         if (
                             moves["down"]
                             and active_piece.blocks_pos[active_piece.downwardmost[0]][0] + 1
                             != 20
+                            and not str(time.time())[12] == prev_time
                         ):
                             active_piece.position[0] += 1
-                            #prev_time = str(time.time())[12]
+                            prev_time = str(time.time())[12]
                             t = str(time.time())[11]
                     case "e":
                         rotate(board, active_piece, "L")
