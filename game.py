@@ -265,16 +265,16 @@ def play_game():
         """
 
         ######### SETTINGS #########
-        debugging = True
+        debugging = False
         view_size = "medium"
         highscore_f = "highscore.txt"
         level = 0
 
         # Location of the scores/debug info
-        score_px = 0
-        score_py = 22
-        debug_px = 0
-        debug_py = 22
+        score_px = 26
+        score_py = 0
+        debug_px = 26
+        debug_py = 8
 
         ###### GAME VARIABLES ######
         # check = False
@@ -415,10 +415,6 @@ def play_game():
 
             # Set up display
             if view_size == "medium":
-                score_px = 26
-                score_py = 0
-                debug_px = 26
-                debug_py = 8
                 display_board = [
                     [p for p in board.board[n] for _ in (0, 1)]
                     for n, line in enumerate(board.board[:-1])
