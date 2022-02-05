@@ -11,6 +11,7 @@ CURSES_COLORS = [
     curses.COLOR_BLUE,
     curses.COLOR_RED,
     curses.COLOR_GREEN,
+    curses.COLOR_WHITE,
 ]
 
 
@@ -120,9 +121,9 @@ class Piece:
                 downwardmost_block[0] = n
 
         for n, block in enumerate(self.blocks):
-            if block[1] == rightmost_val and n not in rightmost_block:
+            if block[1] >= rightmost_val and n not in rightmost_block:
                 rightmost_block.append(n)
-            if block[1] == leftmost_val and n not in leftmost_block:
+            if block[1] <= leftmost_val and n not in leftmost_block:
                 leftmost_block.append(n)
             if (
                 block[0] == downwardmost_val
@@ -238,6 +239,30 @@ def save_score(file, score) -> None:
             f.write(str(score))
 
 
+def mixed_bag_randomizer(array: list[object], prev_picks: list[object]):
+    available_items = []
+    if len(prev_picks) == len(array):
+        prev_picks.pop(0)
+
+    for n in range(len(array)):
+        if n not in prev_picks:
+            available_items.append(n)
+    if available_items:
+        item_index = random.choice(available_items)
+        prev_picks.append(item_index)
+        return array[item_index], prev_picks
+
+    available_items = range(len(array))
+
+    # Can't have 3 in a row
+    if arr[-1] == arr[-2]:
+        available_items.remove(arr[-1])
+
+    item_index = random.choice(available_items)
+    prev_picks.append(item_index)
+    return array[item_index], prev_picks
+
+
 def play_game():
     def _play_game(stdscr):
         stdscr.clear()
@@ -247,13 +272,13 @@ def play_game():
             raise Exception
 
         f = False
-        for n, color in enumerate(CURSES_COLORS):
+        for n, color in enumerate(CURSES_COLORS, 0):
             if n == 2:
                 f = True
-            if n != 2 and not f:
-                curses.init_pair(n + 1, CURSES_COLORS[0], CURSES_COLORS[n])
+            elif f:
+                curses.init_pair(n + 1, CURSES_COLORS[0], CURSES_COLORS[n - 1])
             else:
-                curses.init_pair(n, CURSES_COLORS[0], CURSES_COLORS[n - 1])
+                curses.init_pair(n + 1, CURSES_COLORS[0], CURSES_COLORS[n])
 
         # Game over screen
         game_over = """
@@ -288,6 +313,7 @@ def play_game():
         moved = False
         highscore = 0
         falltime = "0"
+        piece_list = []
         ############################
 
         # Read Highscores from file
@@ -309,7 +335,8 @@ def play_game():
             [(0, 0, 2), (-1, 0, 2), (0, -1, 2), (-1, -1, 2)],  # Square Block
         ]
 
-        active_piece = Piece(blocks=random.choice(pieces))
+        blocks, piece_list = mixed_bag_randomizer(pieces, piece_list)
+        active_piece = Piece(blocks=blocks)
         stdscr.refresh()
         while playing:
             moves = can_move(board, active_piece)
@@ -324,7 +351,10 @@ def play_game():
                 f"d['right']: {moves['right']}",
                 f"d['down']: {moves['down']}",
                 f"falltime: {falltime}",
+                f"piece_list: {piece_list}",
+                f"{active_piece.leftmost=}",
             ]
+
             # Handle user input
             code = stdscr.getch()
             active_piece.update_block_extremities()
@@ -376,18 +406,21 @@ def play_game():
                 moved = False
 
             # If the block lands, create a new one
-
             if not moves["down"] and str(time.time())[11] == falltime and c != "s":
                 for block in active_piece.blocks_pos:
                     board.add_block(block[0], block[1], block[2] + 10)
                 active_piece.position = [0, 5]
-                active_piece.blocks = random.choice(pieces)
+                active_piece.blocks, piece_list = mixed_bag_randomizer(
+                    pieces, piece_list
+                )
 
             elif not moves["down"] and c == "s":
                 for block in active_piece.blocks_pos:
                     board.add_block(block[0], block[1], block[2] + 10)
                 active_piece.position = [0, 5]
-                active_piece.blocks = random.choice(pieces)
+                active_piece.blocks, piece_list = mixed_bag_randomizer(
+                    pieces, piece_list
+                )
                 falltime = str(time.time())[11]
 
             cleared_line_num = board.check_lines()
