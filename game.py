@@ -28,23 +28,20 @@ class Game_board:
 
         self.board.append([3 for _ in range(self.width)])
 
-    def get(self) -> str:
-        string = ""
-        for line in self.board:
-            string += str(line) + "\n"
-        return string
-
     def add_block(self, x, y, z) -> None:
+        """add z to the board at coord x,y"""
         if not self.board[x][y] == 3:
             self.board[x][y] = z
 
     def check_block(self, x, y) -> int:
+        """Return block at x, y"""
         try:
             return self.board[x][y]
         except IndexError:
             return 3
 
     def check_line(self, line_index):
+        """Check to see if a specific line is full"""
         for pixel in self.board[line_index]:
             if pixel == 3:
                 pass
@@ -53,6 +50,7 @@ class Game_board:
         return True
 
     def check_lines(self):
+        """Checks whole board to see if a line is full"""
         line_count = 0
         for x, line in enumerate(self.board[:-1]):
             if self.check_line(x):
@@ -103,9 +101,10 @@ class Piece:
                 block[2],
             ]
             blocks_pos[x] = positions
-        return blocks_pos
+        self.blocks_pos = blocks_pos
 
     def update_block_extremities(self) -> None:
+        """Finds which block is closest to the left/right/bottom of the board"""
         leftmost_val = self.blocks[0][1]
         leftmost_block = [0]
         rightmost_val = self.blocks[0][1]
@@ -223,11 +222,15 @@ def can_move(board: Game_board, piece: Piece) -> dict:
 
 
 def read_score(file) -> int:
-    with open(file, "r") as f:
-        try:
-            return int(f.readlines()[0])
-        except IndexError:
-            return 0
+    """Read score from file"""
+    try:
+        with open(file, "r") as f:
+            try:
+                return int(f.readlines()[0])
+            except IndexError:
+                return 0
+    except FileNotFoundError:
+        return 0
 
 
 def save_score(file, score) -> None:
@@ -316,11 +319,8 @@ def play_game():
         piece_list = []
         ############################
 
-        # Read Highscores from file
-        try:
-            highscore = read_score(highscore_f)
-        except FileNotFoundError:
-            pass
+        # Read Highscores from file (0 if file not found)
+        highscore = read_score(highscore_f)
 
         # Each piece is represented by 4 blocks, with positions
         # relative to the center of a 9x9 square  (apart from
@@ -335,9 +335,11 @@ def play_game():
             [(0, 0, 2), (-1, 0, 2), (0, -1, 2), (-1, -1, 2)],  # Square Block
         ]
 
+        # Create first piece
         blocks, piece_list = mixed_bag_randomizer(pieces, piece_list)
         active_piece = Piece(blocks=blocks)
-        stdscr.refresh()
+
+        # Main Loop
         while playing:
             moves = can_move(board, active_piece)
             speed = 9 - level if level < 7 else 2
@@ -396,7 +398,7 @@ def play_game():
             if not moves["down"] and active_piece.position[0] == 0:
                 playing = False
 
-            # Piece Falling
+            # Piece falling naturally
             if str(time.time())[11] == str(next_move):
                 if moves["down"] and not moved:
                     moved = True
@@ -423,6 +425,7 @@ def play_game():
                 )
                 falltime = str(time.time())[11]
 
+            # Clear full lines and add to score
             cleared_line_num = board.check_lines()
             if cleared_line_num == 1:
                 score += 40 * (level + 1)
@@ -436,13 +439,14 @@ def play_game():
             total_lines += cleared_line_num
 
             # Re-Draw the piece to the board
-            active_piece.blocks_pos = active_piece.get_block_pos()
+            active_piece.get_block_pos()
             draw_to_board(board, active_piece)
 
             # Update and save the highscore
             highscore = score if score > highscore else highscore
             save_score(highscore_f, highscore) if highscore_f else None
 
+            # Go to the next level every time 10 lines are cleared
             if str(total_lines)[-1] < str(total_lines - cleared_line_num)[-1]:
                 level += 1
 
