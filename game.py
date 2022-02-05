@@ -29,19 +29,19 @@ class Game_board:
         self.board.append([3 for _ in range(self.width)])
 
     def add_block(self, x, y, z) -> None:
-        """add z to the board at coord x,y"""
+        """add z to the board at coord x,y."""
         if not self.board[x][y] == 3:
             self.board[x][y] = z
 
     def check_block(self, x, y) -> int:
-        """Return block at x, y"""
+        """Return block at x, y."""
         try:
             return self.board[x][y]
         except IndexError:
             return 3
 
     def check_line(self, line_index):
-        """Check to see if a specific line is full"""
+        """Check to see if a specific line is full."""
         for pixel in self.board[line_index]:
             if pixel == 3:
                 pass
@@ -50,7 +50,7 @@ class Game_board:
         return True
 
     def check_lines(self):
-        """Checks whole board to see if a line is full"""
+        """Checks whole board to see if a line is full."""
         line_count = 0
         for x, line in enumerate(self.board[:-1]):
             if self.check_line(x):
@@ -104,7 +104,7 @@ class Piece:
         self.blocks_pos = blocks_pos
 
     def update_block_extremities(self) -> None:
-        """Finds which block is closest to the left/right/bottom of the board"""
+        """Finds which block is closest to the left/right/bottom of the board."""
         leftmost_val = self.blocks[0][1]
         leftmost_block = [0]
         rightmost_val = self.blocks[0][1]
@@ -136,7 +136,7 @@ class Piece:
         self.downwardmost = downwardmost_block
 
     def calc_rotate(self, dir: str = None) -> list[tuple]:
-        """Rotate the piece by 90 degrees"""
+        """Rotate the piece by 90 degrees."""
         if self.blocks_pos[0][2] == 2:
             return self.blocks
         new_blocks = []
@@ -222,7 +222,7 @@ def can_move(board: Game_board, piece: Piece) -> dict:
 
 
 def read_score(file) -> int:
-    """Read score from file"""
+    """Read score from file."""
     try:
         with open(file, "r") as f:
             try:
@@ -234,6 +234,7 @@ def read_score(file) -> int:
 
 
 def save_score(file, score) -> None:
+    """Save highscore to file."""
     try:
         with open(file, "x") as f:
             f.write(str(score))
@@ -243,6 +244,7 @@ def save_score(file, score) -> None:
 
 
 def mixed_bag_randomizer(array: list[object], prev_picks: list[object]):
+    """Picks item from provided list ensuring a new item is picked."""
     available_items = []
     if len(prev_picks) == len(array):
         prev_picks.pop(0)
@@ -257,7 +259,7 @@ def mixed_bag_randomizer(array: list[object], prev_picks: list[object]):
 
     available_items = range(len(array))
 
-    # Can't have 3 in a row
+    # Can't have three of the same item in a row
     if arr[-1] == arr[-2]:
         available_items.remove(arr[-1])
 
