@@ -1,5 +1,17 @@
-import time, random
+import time
+import random
 import curses
+
+CURSES_COLORS = [
+    curses.COLOR_WHITE,
+    curses.COLOR_BLACK,
+    curses.COLOR_MAGENTA,
+    curses.COLOR_CYAN,
+    curses.COLOR_YELLOW,
+    curses.COLOR_BLUE,
+    curses.COLOR_RED,
+    curses.COLOR_GREEN,
+]
 
 
 class Game_board:
@@ -208,13 +220,15 @@ def can_move(board: Game_board, piece: Piece) -> dict:
 
     return d
 
+
 def read_score(file) -> int:
     with open(file, "r") as f:
         try:
             return int(f.readlines()[0])
         except IndexError:
             return 0
-        
+
+
 def save_score(file, score) -> None:
     try:
         with open(file, "x") as f:
@@ -223,28 +237,47 @@ def save_score(file, score) -> None:
         with open(file, "w") as f:
             f.write(str(score))
 
+
 def play_game():
     def _play_game(stdscr):
         stdscr.clear()
+        stdscr.nodelay(True)
         curses.start_color()
         if not curses.has_colors():
             raise Exception
-        curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_WHITE)
-        curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLACK)
-        curses.init_pair(4, curses.COLOR_WHITE, curses.COLOR_MAGENTA)
-        curses.init_pair(5, curses.COLOR_WHITE, curses.COLOR_CYAN)
-        curses.init_pair(6, curses.COLOR_WHITE, curses.COLOR_YELLOW)
-        curses.init_pair(7, curses.COLOR_WHITE, curses.COLOR_BLUE)
-        curses.init_pair(8, curses.COLOR_WHITE, curses.COLOR_RED)
-        curses.init_pair(9, curses.COLOR_WHITE, curses.COLOR_GREEN)
+
+        f = False
+        for n, color in enumerate(CURSES_COLORS):
+            if n == 2:
+                f = True
+            if n != 2 and not f:
+                curses.init_pair(n + 1, CURSES_COLORS[0], CURSES_COLORS[n])
+            else:
+                curses.init_pair(n, CURSES_COLORS[0], CURSES_COLORS[n - 1])
+
+        # Game over screen
+        game_over = """
+        ################################
+        #                              #
+        #          Game over !         #
+        #                              #
+        ################################
+        """
+
         ######### SETTINGS #########
-        debugging = False
+        debugging = True
         view_size = "medium"
         highscore_f = "highscore.txt"
         level = 0
-        
+
+        # Location of the scores/debug info
+        score_px = 0
+        score_py = 22
+        debug_px = 0
+        debug_py = 22
+
         ###### GAME VARIABLES ######
-        #check = False
+        # check = False
         prev_time = "0"
         speed = 9
         next_move = 0
@@ -253,36 +286,85 @@ def play_game():
         board = Game_board()
         playing = True
         moved = False
-        level_changed = True
+        highscore = 0
+        falltime = "0"
         ############################
+
+        # Read Highscores from file
+        try:
+            highscore = read_score(highscore_f)
+        except FileNotFoundError:
+            pass
 
         # Each piece is represented by 4 blocks, with positions
         # relative to the center of a 9x9 square  (apart from
         # the long bar and square) (x, -y, color)
         pieces = [
-            [(-1, 0, 4), (0, -1, 4), (0, 0, 4), (0, 1, 4)],    # T Block
-            [(0, 0, 8), (0, 1, 8), (1, 0, 8), (-1, 1, 8)],     # Z Block
-            [(0, -1, 7), (0, 0, 7), (0, 1, 7), (-1, 1, 7)],    # L block
-            [(0, 1, 6), (0, 0, 6), (0, -1, 6), (-1, -1, 6)],   # J block
-            [(1, 0, 9), (0, 0, 9), (0, -1, 9), (-1, -1, 9)],   # S block
-            [(0, -1, 5), (0, -2, 5), (0, 0, 5), (0, 1, 5)],    # | Block
+            [(-1, 0, 4), (0, -1, 4), (0, 0, 4), (0, 1, 4)],  # T Block
+            [(0, 0, 8), (0, 1, 8), (1, 0, 8), (-1, 1, 8)],  # Z Block
+            [(0, -1, 7), (0, 0, 7), (0, 1, 7), (-1, 1, 7)],  # L block
+            [(0, 1, 6), (0, 0, 6), (0, -1, 6), (-1, -1, 6)],  # J block
+            [(1, 0, 9), (0, 0, 9), (0, -1, 9), (-1, -1, 9)],  # S block
+            [(0, -1, 5), (0, -2, 5), (0, 0, 5), (0, 1, 5)],  # | Block
             [(0, 0, 2), (-1, 0, 2), (0, -1, 2), (-1, -1, 2)],  # Square Block
         ]
 
         active_piece = Piece(blocks=random.choice(pieces))
+        stdscr.refresh()
         while playing:
             moves = can_move(board, active_piece)
             speed = 9 - level if level < 7 else 2
+            debug_messages = [
+                f"Timer: {str(time.time())}",
+                f"Pos: {active_piece.blocks_pos[3]}",
+                f"leftmost: {active_piece.blocks_pos[active_piece.leftmost[0]]}",
+                f"rightmost: {active_piece.blocks_pos[active_piece.rightmost[0]]}",
+                f"downwardmost: {next_move}",
+                f"d['left']: {moves['left']}",
+                f"d['right']: {moves['right']}",
+                f"d['down']: {moves['down']}",
+                f"falltime: {falltime}",
+            ]
+            # Handle user input
+            code = stdscr.getch()
+            active_piece.update_block_extremities()
+
+            c = chr(code).lower() if code != -1 else ""
+            if c == "a":
+                if (
+                    moves["left"]
+                    and active_piece.blocks_pos[active_piece.leftmost[0]][1] - 1 != 0
+                    and not str(time.time())[12] == prev_time
+                ):
+                    active_piece.position[1] -= 1
+                    prev_time = str(time.time())[12]
+            elif c == "d":
+                if (
+                    moves["right"]
+                    and active_piece.blocks_pos[active_piece.rightmost[0]][1] + 1 != 11
+                    and not str(time.time())[12] == prev_time
+                ):
+                    active_piece.position[1] += 1
+                    if active_piece.position[1] == 11:
+                        active_piece.position[1] -= 1
+                    prev_time = str(time.time())[12]
+            elif c == "s":
+                if (
+                    moves["down"]
+                    and active_piece.blocks_pos[active_piece.downwardmost[0]][0] + 1
+                    != 20
+                    # and not str(time.time())[12] == prev_time
+                ):
+                    active_piece.position[0] += 1
+                    prev_time = str(time.time())[12]
+            elif c == "e":
+                rotate(board, active_piece, "L")
+            elif c == "q":
+                rotate(board, active_piece, "R")
+
             # Game over condition
             if not moves["down"] and active_piece.position[0] == 0:
                 playing = False
-                
-            # If the block lands, create a new one
-            if not moves["down"] and str(time.time())[11] == "0":
-                for block in active_piece.blocks_pos:
-                    board.add_block(block[0], block[1], block[2] + 10)
-                active_piece.position = [0, 5]
-                active_piece.blocks = random.choice(pieces)
 
             # Piece Falling
             if str(time.time())[11] == str(next_move):
@@ -290,31 +372,64 @@ def play_game():
                     moved = True
                     active_piece.position[0] += active_piece.speed
                     next_move = str(int(str(time.time())[11]) + speed)[-1]
-
             else:
                 moved = False
-                
+
+            # If the block lands, create a new one
+
+            if not moves["down"] and str(time.time())[11] == falltime and c != "s":
+                for block in active_piece.blocks_pos:
+                    board.add_block(block[0], block[1], block[2] + 10)
+                active_piece.position = [0, 5]
+                active_piece.blocks = random.choice(pieces)
+
+            elif not moves["down"] and c == "s":
+                for block in active_piece.blocks_pos:
+                    board.add_block(block[0], block[1], block[2] + 10)
+                active_piece.position = [0, 5]
+                active_piece.blocks = random.choice(pieces)
+                falltime = str(time.time())[11]
+
+            cleared_line_num = board.check_lines()
+            if cleared_line_num == 1:
+                score += 40 * (level + 1)
+            elif cleared_line_num == 2:
+                score += 100 * (level + 1)
+            elif cleared_line_num == 3:
+                score += 300 * (level + 1)
+            elif cleared_line_num == 4:
+                score += 1200 * (level + 1)
+
+            total_lines += cleared_line_num
 
             # Re-Draw the piece to the board
             active_piece.blocks_pos = active_piece.get_block_pos()
             draw_to_board(board, active_piece)
 
-            # Location of the debug info
-            debug_py = 22
-            debug_px = 0
+            # Update and save the highscore
+            highscore = score if score > highscore else highscore
+            save_score(highscore_f, highscore) if highscore_f else None
+
+            if str(total_lines)[-1] < str(total_lines - cleared_line_num)[-1]:
+                level += 1
 
             # Set up display
-            match view_size:
-                case "medium":
-                    debug_py = 0
-                    debug_px = 26
-                    display_board = [
-                        [p for p in board.board[n] for _ in (0, 1)]
-                        for n, line in enumerate(board.board[:-1])
-                        for _ in (0, 1)
-                    ]
-                case "small" | _:
-                    display_board = board.board[:-1]
+            if view_size == "medium":
+                score_px = 26
+                score_py = 0
+                debug_px = 26
+                debug_py = 8
+                display_board = [
+                    [p for p in board.board[n] for _ in (0, 1)]
+                    for n, line in enumerate(board.board[:-1])
+                    for _ in (0, 1)
+                ]
+            else:
+                score_px = 0
+                score_py = 22
+                debug_px = 0
+                debug_py = 28
+                display_board = board.board[:-1]
 
             # Display the board from the board matrix
             for x, line in enumerate(display_board):
@@ -328,128 +443,19 @@ def play_game():
                             stdscr.addstr(x, y, chr(9633), curses.color_pair(pixel))
                     except curses.error:
                         pass
-            
-            # Game over screen
-            game_over = """
-            ################################
-            #                              #
-            #          Game over !         #
-            #                              #
-            ################################
-            
-            """
 
-            try:
-                highscore = read_score(highscore_f)
-            except FileNotFoundError:
-                pass
-                
             # Show score
-            stdscr.addstr(debug_py, debug_px, f"Score: {score}")
-            stdscr.addstr(debug_py + 2, debug_px, f"Highscore: {highscore}")
-            stdscr.addstr(debug_py + 4, debug_px, f"Level: {level}")
+            stdscr.addstr(score_py, score_px, f"Score: {score}")
+            stdscr.addstr(score_py + 2, score_px, f"Highscore: {highscore}")
+            stdscr.addstr(score_py + 4, score_px, f"Level: {level}")
 
-            # DEBUG AREA
+            # Show debug messages
             if debugging:
-                # Show timer
-                stdscr.addstr(
-                    debug_py + 5, 
-                    debug_px, 
-                    f"Timer: {str(time.time())}"
-                )
-                # Show individual block position
-                stdscr.addstr(
-                    debug_py + 6, 
-                    debug_px, 
-                    f"Pos: {active_piece.blocks_pos[3]}"
-                )
-                # Extra debug space
-                stdscr.addstr(
-                    debug_py + 7,
-                    debug_px,
-                    f"leftmost: {active_piece.blocks_pos[active_piece.leftmost[0]]}",
-                )
-                stdscr.addstr(
-                    debug_py + 8,
-                    debug_px,
-                    f"rightmost: {active_piece.blocks_pos[active_piece.rightmost[0]]}",
-                )
-                stdscr.addstr(
-                    debug_py + 9,
-                    debug_px,
-                    f"downwardmost: {next_move}",
-                )
-                stdscr.addstr(debug_py + 10, debug_px, f'd["left"]: {moves["left"]}')
-                stdscr.addstr(debug_py + 11, debug_px, f'd["right"]: {moves["right"]}')
-                stdscr.addstr(debug_py + 12, debug_px, f'd["down"]: {moves["down"]}')
-
+                for n, message in enumerate(debug_messages):
+                    stdscr.addstr(debug_py + n, debug_px, message)
             board.clear()
             stdscr.refresh()
-            stdscr.timeout(1)
-            l = board.check_lines()
-            if l:
-                match l:
-                    case 1:
-                        score += 40 * (level + 1)
-                    case 2:
-                        score += 100 * (level + 1)
-                    case 3:
-                        score += 300 * (level + 1)
-                    case 4:
-                        score += 1200 * (level + 1)
-                        
-                total_lines += l
-                level_changed = False
-                        
-                # Update and save the highscore
-                highscore = score if score > highscore else highscore
-                save_score(highscore_f, highscore) if highscore_f else None
-            
-            if str(total_lines)[-1] < str(total_lines - l)[-1]:
-                level += 1
-            
 
-            # Handle user input
-            code = stdscr.getch()
-            active_piece.update_block_extremities()
-            
-            if code != -1:
-                match chr(code).lower():
-                    case "a":
-                        if (
-                            moves["left"]
-                            and active_piece.blocks_pos[active_piece.leftmost[0]][1] - 1
-                            != 0
-                            and not str(time.time())[12] == prev_time
-                        ):
-                            active_piece.position[1] -= 1
-                            prev_time = str(time.time())[12]
-                    case "d":
-                        if (
-                            moves["right"]
-                            and active_piece.blocks_pos[active_piece.rightmost[0]][1]+ 1 
-                            != 11
-                            and not str(time.time())[12] == prev_time
-                        ):
-                            active_piece.position[1] += 1
-                            if active_piece.position[1] == 11:
-                                active_piece.position[1] -= 1
-                            prev_time = str(time.time())[12]
-                    case "s":
-                        if (
-                            moves["down"]
-                            and active_piece.blocks_pos[active_piece.downwardmost[0]][0] + 1
-                            != 20
-                            and not str(time.time())[12] == prev_time
-                        ):
-                            active_piece.position[0] += 1
-                            prev_time = str(time.time())[12]
-                    case "e":
-                        rotate(board, active_piece, "L")
-                    case "q":
-                        rotate(board, active_piece, "R")
-
-            stdscr.refresh()
         stdscr.addstr(5, 10, game_over)
         stdscr.refresh()
         time.sleep(5)
